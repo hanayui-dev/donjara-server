@@ -317,7 +317,6 @@ const SKEY='donjara_tiles_v1',SSETS_KEY='donjara_sets_v1';
 let TMAP={},ALL_TILES=[],ALL_SETS=[];
 let G=null,myPlayerId=null,myRoomId=null,isHost=false;
 let _nType='',_nTiles=[];
-const socket=io();
 socket.on('connect',()=>{myPlayerId=socket.id;});
 async function loadTilesFromServer(){
   try{
@@ -867,5 +866,6 @@ function btn(p,label,cls,fn){
 
 </script>
 <script src="/socket.io/socket.io.js"></script>
+<script>const socket=io();</script>
 </body>
 </html>
