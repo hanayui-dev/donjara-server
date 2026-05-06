@@ -211,18 +211,27 @@ io.on('connection', (socket) => {
   });
 
   // ゲーム開始
-  socket.on('start_game', (_, cb) => {
+  socket.on('start_game', ({ npcCount=0 }={}, cb) => {
     const room = rooms[socket.roomId];
     if(!room){ cb&&cb({ ok:false, error:'ルームなし' }); return; }
-    if(room.players.length<2){ cb&&cb({ ok:false, error:'2人以上必要です' }); return; }
     if(room.players[0].id!==socket.id){ cb&&cb({ ok:false, error:'ホストのみ開始できます' }); return; }
+    // NPCを追加
+    const npcNames = ['NPC-ことり','NPC-海未','NPC-凛','NPC-真姫'];
+    const addCount = Math.min(npcCount, 4 - room.players.length);
+    for(let i=0;i<addCount;i++){
+      room.players.push({
+        id: 'npc_'+i+'_'+Date.now(),
+        name: npcNames[i] || 'NPC'+(i+1),
+        isNPC: true,
+        hand:[], melds:[], discards:[], ready:false
+      });
+    }
+    if(room.players.length<2){ cb&&cb({ ok:false, error:'2人以上必要です' }); return; }
     room.status = 'playing';
     initGame(room);
-    console.log(`ゲーム開始: ルーム ${socket.roomId}`);
+    console.log(`ゲーム開始: ルーム ${socket.roomId} (NPC${addCount}人)`);
     cb&&cb({ ok:true });
-    // 各プレイヤーに状態を送信
     broadcastGameState(room);
-    // 最初のツモ
     setTimeout(()=>doTsumo(room), 500);
   });
 
@@ -366,6 +375,25 @@ function doTsumo(room) {
   g.phase = 'discard';
   g.players[g.cur].hand.push(t);
   broadcastGameState(room);
+  // NPCのターンなら自動処理
+  if(g.players[g.cur].isNPC){
+    setTimeout(()=>npcTurn(room), 800);
+  }
+}
+
+function npcTurn(room) {
+  const g = room.game;
+  if(!g||room.status!=='playing') return;
+  const p = g.players[g.cur];
+  if(!p.isNPC) return;
+  // ランダムに1枚捨てる（ツモ切り）
+  const di = Math.floor(Math.random()*p.hand.length);
+  const did = p.hand[di];
+  p.hand.splice(di,1);
+  p.discards.push(did);
+  g.lastDisc = did; g.lastDiscP = g.cur; g.drawn = null; g.phase = 'naki_wait';
+  broadcastGameState(room);
+  setTimeout(()=>checkNaki(room), 400);
 }
 
 function doRinshanTsumo(room, playerIdx) {
@@ -394,15 +422,20 @@ function checkNaki(room) {
     if(opts.length) nakiOptions[p.id] = opts;
   });
 
-  if(Object.keys(nakiOptions).length===0){
-    // 誰も鳴けない → 自動で次へ
+  // NPCプレイヤーのオプションを除外（NPCは鳴かない）
+  const humanNakiOptions = {};
+  Object.entries(nakiOptions).forEach(([pid, opts]) => {
+    const p = g.players.find(p=>p.id===pid);
+    if(!p?.isNPC) humanNakiOptions[pid] = opts;
+  });
+
+  if(Object.keys(humanNakiOptions).length===0){
     setTimeout(()=>nextTurn(room), 300);
   } else {
-    // 鳴ける人に通知
     broadcastGameState(room);
     io.to(room.id).emit('naki_available', {
       disc: g.lastDisc,
-      options: nakiOptions,
+      options: humanNakiOptions,
     });
   }
 }
@@ -414,6 +447,25 @@ function nextTurn(room) {
   g.phase = 'draw';
   broadcastGameState(room);
   setTimeout(()=>doTsumo(room), 300);
+}
+
+
+// NPC: ツモ切り（最後にツモった牌をそのまま捨てる）
+function npcTurn(room) {
+  const g = room.game;
+  if(!g||room.status!=='playing'||g.phase!=='discard') return;
+  const p = g.players[g.cur];
+  if(!p.isNpc) return;
+  // ツモ切り（手牌の最後の牌を捨てる）
+  const discIdx = p.hand.length - 1;
+  const discId = p.hand.splice(discIdx, 1)[0];
+  p.discards.push(discId);
+  g.lastDisc = discId;
+  g.lastDiscP = g.cur;
+  g.drawn = null;
+  g.phase = 'naki_wait';
+  broadcastGameState(room);
+  setTimeout(()=>checkNaki(room), 300);
 }
 
 function broadcastGameState(room) {
@@ -431,7 +483,7 @@ function getRoomInfo(roomId) {
   return {
     roomId: room.id,
     status: room.status,
-    players: room.players.map(p=>({ id:p.id, name:p.name })),
+    players: room.players.map(p=>({ id:p.id, name:p.name, isNPC:!!p.isNPC })),
     maxPlayers: 4,
   };
 }
