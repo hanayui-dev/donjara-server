@@ -222,7 +222,7 @@ io.on('connection', (socket) => {
       room.players.push({
         id: 'npc_'+i+'_'+Date.now(),
         name: npcNames[i] || 'NPC'+(i+1),
-        isNPC: true,
+        isNpc: true,
         hand:[], melds:[], discards:[], ready:false
       });
     }
@@ -376,7 +376,7 @@ function doTsumo(room) {
   g.players[g.cur].hand.push(t);
   broadcastGameState(room);
   // NPCのターンなら自動処理
-  if(g.players[g.cur].isNPC){
+  if(g.players[g.cur].isNpc){
     setTimeout(()=>npcTurn(room), 800);
   }
 }
@@ -385,7 +385,7 @@ function npcTurn(room) {
   const g = room.game;
   if(!g||room.status!=='playing') return;
   const p = g.players[g.cur];
-  if(!p.isNPC) return;
+  if(!p.isNpc) return;
   // ランダムに1枚捨てる（ツモ切り）
   const di = Math.floor(Math.random()*p.hand.length);
   const did = p.hand[di];
@@ -426,7 +426,7 @@ function checkNaki(room) {
   const humanNakiOptions = {};
   Object.entries(nakiOptions).forEach(([pid, opts]) => {
     const p = g.players.find(p=>p.id===pid);
-    if(!p?.isNPC) humanNakiOptions[pid] = opts;
+    if(!p?.isNpc) humanNakiOptions[pid] = opts;
   });
 
   if(Object.keys(humanNakiOptions).length===0){
@@ -483,7 +483,7 @@ function getRoomInfo(roomId) {
   return {
     roomId: room.id,
     status: room.status,
-    players: room.players.map(p=>({ id:p.id, name:p.name, isNPC:!!p.isNPC })),
+    players: room.players.map(p=>({ id:p.id, name:p.name, isNpc:!!p.isNpc })),
     maxPlayers: 4,
   };
 }
