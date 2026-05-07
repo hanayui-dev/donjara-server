@@ -337,7 +337,18 @@ async function loadTilesFromServer(){
 }
 loadTilesFromServer();
 function getName(){const n=document.getElementById('nameInput').value.trim();if(!n){document.getElementById('errorMsg').textContent='ニックネームを入力してください';return null;}return n;}
-function createRoom(){const name=getName();if(!name)return;socket.emit('create_room',{name},(res)=>{if(!res.ok){document.getElementById('errorMsg').textContent=res.error||'エラー';return;}myRoomId=res.roomId;isHost=true;showWaiting(res.roomId);});}
+function createRoom(){
+  const name=getName();if(!name)return;
+  socket.emit('create_room',{name},(res)=>{
+    if(!res.ok){document.getElementById('errorMsg').textContent=res.error||'エラー';return;}
+    myRoomId=res.roomId;isHost=true;
+    showWaiting(res.roomId);
+    // room_update待ちせず直接ホスト用UIを表示
+    document.getElementById('npcSelect').style.display='flex';
+    document.getElementById('startBtn').style.display='';
+    document.getElementById('waitingHint').textContent='1人参加中（NPCを追加してゲーム開始）';
+  });
+}
 function joinRoom(){const name=getName();if(!name)return;const roomId=document.getElementById('roomInput').value.trim().toUpperCase();if(roomId.length!==5){document.getElementById('errorMsg').textContent='ルームIDは5文字です';return;}socket.emit('join_room',{roomId,name},(res)=>{if(!res.ok){document.getElementById('errorMsg').textContent=res.error||'エラー';return;}myRoomId=res.roomId;isHost=res.playerIdx===0;showWaiting(res.roomId);});}
 function showWaiting(roomId){document.getElementById('lobbyBox').style.display='none';document.getElementById('waitingBox').style.display='';document.getElementById('roomIdDisplay').textContent=roomId;}
 let npcCount=0;
