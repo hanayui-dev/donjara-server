@@ -772,14 +772,25 @@ function onDragMove(e){
     // 左右ドラッグ: 並び替えインジケーター
     drag.tile.classList.add('dragging');
     const handEl=document.getElementById('myHand');
-    const tiles=[...handEl.querySelectorAll('.tf[data-hand-idx]')];
     if(drag.indicator) drag.indicator.remove();
     const dst=getDropIdx(e.clientX);
+    const tiles=[...handEl.querySelectorAll('.tf[data-hand-idx]')];
     const ind=document.createElement('div');
     ind.className='drop-indicator';
     drag.indicator=ind;
-    if(dst>=tiles.length) handEl.appendChild(ind);
-    else handEl.insertBefore(ind,tiles[dst]);
+    // tileはgroup-wrap内にあるのでhandElの直接の子ではない
+    // handElの直接の子（group-wrap）に対してinsertBeforeする
+    if(dst>=tiles.length){
+      handEl.appendChild(ind);
+    } else {
+      const targetTile=tiles[dst];
+      const targetParent=targetTile?.closest('.hand-group-wrap')||targetTile?.parentElement;
+      if(targetParent&&targetParent.parentElement===handEl){
+        handEl.insertBefore(ind,targetParent);
+      } else {
+        handEl.appendChild(ind);
+      }
+    }
   }
 }
 
@@ -792,7 +803,7 @@ function onDragUp(e){
 
   if(drag.mode==='discard'){
     // 十分上に動いていたら捨て牌
-    if(dy<-DISCARD_UP && G.phase==='discard' && G.cur===G.myIdx){
+    if(dy<-DISCARD_UP && G.phase==='discard' && G.players[G.cur]?.id===myPlayerId){
       const src=drag.srcIdx;
       const id=G.players[G.myIdx].hand[src];
       // スタイルリセット
@@ -827,7 +838,7 @@ function onDragUp(e){
   if(!drag.mode){
     const src=drag.srcIdx;
     const id=G.players[G.myIdx].hand[src];
-    if(G.phase==='discard'&&G.cur===G.myIdx){
+    if(G.phase==='discard'&&G.players[G.cur]?.id===myPlayerId){
       drag={active:false,srcIdx:-1,tile:null,indicator:null,startX:0,startY:0,mode:null};
       discardTile(id,src);
       return;
