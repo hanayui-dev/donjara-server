@@ -896,5 +896,14 @@ function btn(p,label,cls,fn){
 </script>
 <script src="/socket.io/socket.io.js"></script>
 <script>const socket=io();</script>
+<script>
+document.addEventListener('click',function(e){
+  const btn=e.target.closest('[data-n]');
+  if(!btn)return;
+  npcCount=parseInt(btn.dataset.n);
+  document.querySelectorAll('.npc-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+});
+</script>
 </body>
 </html>
