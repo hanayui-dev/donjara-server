@@ -353,7 +353,8 @@ function joinRoom(){const name=getName();if(!name)return;const roomId=document.g
 function showWaiting(roomId){document.getElementById('lobbyBox').style.display='none';document.getElementById('waitingBox').style.display='';document.getElementById('roomIdDisplay').textContent=roomId;}
 let npcCount=0;
 function setNpc(n,btn){npcCount=n;document.querySelectorAll('.npc-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
-function startGame(){socket.emit('start_game',{npcCount},(res)=>{if(!res||!res.ok)document.getElementById('waitErrorMsg').textContent=res?.error||'エラー';});}
+function startGame(){socket.emit('start_game',{npcCount},(res)=>{if(!res||!res.ok)document.getElementById('waitErrorMsg').textContent=res?.error||'エラー';});
+window.setNpc=setNpc;window.startGame=startGame;window.createRoom=createRoom;window.joinRoom=joinRoom;window.closeNaki=closeNaki;window.confirmNaki=confirmNaki;window.backToLobby=backToLobby;}
 function backToLobby(){document.getElementById('winOv').classList.remove('open');document.getElementById('scGame').style.display='none';document.getElementById('scLobby').style.display='flex';document.getElementById('waitingBox').style.display='none';document.getElementById('lobbyBox').style.display='';G=null;dividers.clear();}
 socket.on('room_update',(info)=>{
   if(!info)return;
