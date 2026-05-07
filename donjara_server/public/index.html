@@ -310,11 +310,11 @@ body{display:flex;flex-direction:column;}
       <div class="opp right-slot" id="slotRight"></div>
       <div class="center-area" id="centerArea"></div>
       <div id="discContainer" style="position:absolute;inset:0;pointer-events:none;overflow:visible;z-index:5;"></div>
+      <div id="meldContainer" style="position:absolute;inset:0;pointer-events:none;overflow:visible;z-index:6;"></div>
     </div>
   </div>
   <div class="myarea">
     <div class="mytop"><div class="myname" id="myName">-</div><div class="actrow" id="actRow"></div></div>
-    <div id="meldBot" style="display:flex;gap:6px;flex-wrap:wrap;padding:4px 0;min-height:0;"></div>
     <div class="handrow" id="myHand"></div>
   </div>
 </div>
@@ -339,7 +339,17 @@ socket.on('room_update',(info)=>{
     document.getElementById('waitingHint').textContent=hc+'人参加中。ホストがゲームを開始するまで待機してください。';
   }
 });
-socket.on('game_state',(state)=>{if(!state)return;G=state;if(document.getElementById('scLobby').style.display!=='none'){document.getElementById('scLobby').style.display='none';document.getElementById('scGame').style.display='flex';}render();});
+socket.on('game_state',(state)=>{
+  if(!state)return;
+  // game_state受信時はnakiOptionsをリセット（サーバーが正）
+  if(G&&G.nakiOptions&&state.phase!=='naki_wait') state.nakiOptions=null;
+  G=state;
+  if(document.getElementById('scLobby').style.display!=='none'){
+    document.getElementById('scLobby').style.display='none';
+    document.getElementById('scGame').style.display='flex';
+  }
+  render();
+});
 socket.on('naki_available',({disc,options})=>{if(!G)return;const myOpts=options[myPlayerId];if(myOpts&&myOpts.length>0){G.nakiOptions=myOpts;G.nakiDisc=disc;G.phase='naki_wait';render();msg('「'+(TMAP[disc]?.name||'?')+'」が捨てられました',true);}});
 socket.on('game_over',(data)=>{document.getElementById('winPl').textContent=data.winnerName;document.getElementById('winTp').textContent=data.type+' で上がり！';const grps=calcGroups(data.hand||[]);document.getElementById('winGroups').innerHTML=grps.map(g=>`<div class="hand-group"><div class="hg-lbl">${g.setName||'？'}</div><div class="hg-tiles ${g.match?'hg-kou':'hg-chi'}">${g.ids.map(id=>tf(id,'sm')).join('')}</div></div>`).join('');const ms=document.getElementById('winMeldSec');if(data.melds&&data.melds.length>0){document.getElementById('winMelds').innerHTML=data.melds.map(m=>`<div class="win-meldg"><span style="font-size:.58rem;color:var(--ui-tx2);margin-right:3px;">${m.type}</span>${m.tiles.map(id=>tf(id,'sm')).join('')}</div>`).join('');ms.style.display='';}else{ms.style.display='none';}document.getElementById('winOv').classList.add('open');});
 socket.on('ryukyoku',({message})=>{msg(message+'！',true);});
@@ -450,8 +460,45 @@ function render(){
     wrap.appendChild(row);handEl.appendChild(wrap);
     if(gi<grps.length-1)handEl.appendChild(makeDivSlot(grp.end,true));
   });
-  const mbEl=document.getElementById('meldBot');
-  if(mbEl)mbEl.innerHTML=(me.melds||[]).map(m=>{const tH=m.tiles.map(id=>tf(id,'mt')).join('');const sn=findMatchingSet(m.tiles)||m.type||'';return `<div style="display:flex;flex-direction:column;align-items:center;gap:1px;"><div style="font-size:.5rem;color:rgba(255,220,80,.85);">${sn}</div><div style="display:flex;gap:2px;">${tH}</div></div>`;}).join('');
+  // 各プレイヤーの鳴き牌を卓上の各席右端に表示
+  const meldCont=document.getElementById('meldContainer');
+  if(meldCont){
+    const S=document.querySelector('.felt')?.offsetWidth||600;
+    const CELL=S/20,TW=26,TH=36,GAP=2,SW=TW+GAP,SH=TH+GAP;
+    let meldHtml='';
+    for(let qi=0;qi<4;qi++){
+      const pi=(mi+qi)%n;if(qi>=n)break;
+      const p=G.players[pi];
+      if(!p||!p.melds||!p.melds.length)continue;
+      // 各席の鳴き牌開始位置（捨て牌エリアの外側）
+      // P1(下):右下 P2(右):右上 P3(上):左上 P4(左):左下
+      const meldConfigs=[
+        {sr:17,sc:15,sx:SW,sy:0,rot:0},    // P1自分: row17,col15から右
+        {sr:3, sc:17,sx:0,sy:SH,rot:-90},  // P2右: row3,col17から下
+        {sr:2, sc:4, sx:-SW,sy:0,rot:180}, // P3上: row2,col4から左
+        {sr:15,sc:2, sx:0,sy:-SH,rot:90},  // P4左: row15,col2から上
+      ];
+      const cfg=meldConfigs[qi];
+      let ox=Math.round(cfg.sc*CELL),oy=Math.round(cfg.sr*CELL);
+      p.melds.forEach((m,mi2)=>{
+        const sn=m.type||'';
+        const tilesHtml=m.tiles.map((id,ti)=>{
+          const t=TMAP[id];if(!t)return '';
+          const x=ox+ti*cfg.sx;const y=oy+ti*cfg.sy;
+          const img=t.image?`<img style="width:100%;height:65%;object-fit:cover;display:block;flex-shrink:0;" src="${t.image}" onerror="this.style.display='none'">`:`<div style="font-size:.9em;color:#1a1208;">🎴</div>`;
+          return `<div style="position:absolute;width:${TW}px;height:${TH}px;left:${Math.round(x)}px;top:${Math.round(y)}px;transform:rotate(${cfg.rot}deg);transform-origin:center center;background:linear-gradient(160deg,#fff,#f5f0e8);border:1px solid #c8b88a;border-bottom:2px solid #a09060;border-radius:2px;box-shadow:1px 2px 3px rgba(0,0,0,.5);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow:hidden;">${img}</div>`;
+        }).join('');
+        // セット名ラベル
+        const lx=ox,ly=oy-(qi===0?16:qi===2?-16:0);
+        meldHtml+=tilesHtml;
+        // 次のメルドは横にずらす
+        const meldW=m.tiles.length*SW;
+        ox+=cfg.sx!==0?meldW+GAP*3:0;
+        oy+=cfg.sy!==0?meldW+GAP*3:0;
+      });
+    }
+    meldCont.innerHTML=meldHtml;
+  }
   const arEl=document.getElementById('actRow');arEl.innerHTML='';
   const isMT=G.players[G.cur]?.id===myPlayerId,canN=!isMT&&G.phase==='naki_wait'&&G.nakiOptions&&G.nakiOptions.length>0;
   if(isMT&&G.phase==='discard'){if(allGroupsMatch(hand))btn(arEl,'ツモ','green',doTsumoWin);if(canAnkan(hand).length)btn(arEl,'暗カン','primary',doAnkan);if(canKakan(me.melds||[],hand).length)btn(arEl,'加カン','primary',doKakan);const h=document.createElement('span');h.className='hint';h.textContent='捨てる牌をクリック';arEl.appendChild(h);}
