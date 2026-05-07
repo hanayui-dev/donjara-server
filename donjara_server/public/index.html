@@ -286,10 +286,10 @@ body{display:flex;flex-direction:column;}
     <div id="npcSelect" style="display:none;flex-direction:column;gap:8px;">
       <div style="font-size:.75rem;color:var(--ui-tx2);text-align:center;">NPCを追加</div>
       <div style="display:flex;gap:6px;justify-content:center;">
-        <button class="npc-btn on" onclick="setNpc(0,this)">0人</button>
-        <button class="npc-btn" onclick="setNpc(1,this)">1人</button>
-        <button class="npc-btn" onclick="setNpc(2,this)">2人</button>
-        <button class="npc-btn" onclick="setNpc(3,this)">3人</button>
+        <button class="npc-btn on" data-n="0">0人</button>
+        <button class="npc-btn" data-n="1">1人</button>
+        <button class="npc-btn" data-n="2">2人</button>
+        <button class="npc-btn" data-n="3">3人</button>
       </div>
     </div>
     <button class="lobby-btn primary" id="startBtn" onclick="startGame()" style="display:none;">ゲーム開始</button>
