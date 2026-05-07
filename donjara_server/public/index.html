@@ -283,6 +283,15 @@ body{display:flex;flex-direction:column;}
     </div>
     <div id="playerList"></div>
     <div id="waitingHint" style="font-size:.75rem;color:var(--ui-tx2);text-align:center;">2〜4人揃ったらゲーム開始できます</div>
+    <div id="npcSelect" style="display:none;flex-direction:column;gap:8px;">
+      <div style="font-size:.75rem;color:var(--ui-tx2);text-align:center;">NPCを追加</div>
+      <div style="display:flex;gap:6px;justify-content:center;">
+        <button class="npc-btn on" onclick="setNpc(0,this)">0人</button>
+        <button class="npc-btn" onclick="setNpc(1,this)">1人</button>
+        <button class="npc-btn" onclick="setNpc(2,this)">2人</button>
+        <button class="npc-btn" onclick="setNpc(3,this)">3人</button>
+      </div>
+    </div>
     <button class="lobby-btn primary" id="startBtn" onclick="startGame()" style="display:none;">ゲーム開始</button>
     <div class="error-msg" id="waitErrorMsg"></div>
   </div>
@@ -337,11 +346,19 @@ function startGame(){socket.emit('start_game',{npcCount},(res)=>{if(!res||!res.o
 function backToLobby(){document.getElementById('winOv').classList.remove('open');document.getElementById('scGame').style.display='none';document.getElementById('scLobby').style.display='flex';document.getElementById('waitingBox').style.display='none';document.getElementById('lobbyBox').style.display='';G=null;dividers.clear();}
 socket.on('room_update',(info)=>{
   if(!info)return;
-  document.getElementById('playerList').innerHTML=info.players.map((p,i)=>`<div class="player-item${i===0?' host':''}"><span class="dot"></span><span>${p.name}${i===0?' 👑':''}</span></div>`).join('');
-  document.getElementById('startBtn').style.display=isHost?'':'none';
-  document.getElementById('npcSelect').style.display=isHost?'':'none';
+  document.getElementById('playerList').innerHTML=info.players.map((p,i)=>
+    `<div class="player-item${i===0?' host':''}"><span class="dot"></span><span>${p.name}${i===0?' 👑':''}</span></div>`
+  ).join('');
   const hc=info.players.length;
-  document.getElementById('waitingHint').textContent=hc>=2?hc+'人参加中':'2〜4人揃うか、NPCを追加してください';
+  if(isHost){
+    document.getElementById('npcSelect').style.display='flex';
+    document.getElementById('startBtn').style.display='';
+    document.getElementById('waitingHint').textContent=hc+'人参加中（NPC追加でゲーム開始可）';
+  } else {
+    document.getElementById('npcSelect').style.display='none';
+    document.getElementById('startBtn').style.display='none';
+    document.getElementById('waitingHint').textContent=hc+'人参加中。ホストがゲームを開始するまで待機してください。';
+  }
 });
 socket.on('game_state',(state)=>{if(!state)return;G=state;if(document.getElementById('scLobby').style.display!=='none'){document.getElementById('scLobby').style.display='none';document.getElementById('scGame').style.display='flex';}render();});
 socket.on('naki_available',({disc,options})=>{if(!G)return;const myOpts=options[myPlayerId];if(myOpts&&myOpts.length>0){G.nakiOptions=myOpts;G.nakiDisc=disc;G.phase='naki_wait';render();msg('「'+(TMAP[disc]?.name||'?')+'」が捨てられました',true);}});
